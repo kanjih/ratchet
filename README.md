@@ -21,6 +21,7 @@ $ ratchet init -p {your-project-id} -i {spanner-instance} -d {spanner-database}
 Creating migration table...
 Migration table has been created!!
 ```
+This will create a table to manage migration.
 
 ### 2. Create migration files
 ```console
