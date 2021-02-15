@@ -77,7 +77,7 @@ func runEachMigration(ctx context.Context, adminClient *database.DatabaseAdminCl
 		}
 
 		if err != nil {
-			fmt.Println("following query failed.\n" + query)
+			fmt.Println("following query failed.\n" + query + ";")
 			return err
 		}
 	}
