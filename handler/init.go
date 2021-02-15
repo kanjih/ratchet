@@ -43,9 +43,13 @@ func Init(c *cli.Context) error {
 }
 
 func isMigrationTableExists(ctx context.Context, client *spanner.Client) (bool, error) {
-	rows, err := execSql(ctx, client, "SELECT count(*) FROM information_schema.Tables WHERE table_name = 'Migrations';")
+	rows, err := execSql(ctx, client, "SELECT count(*) as cnt FROM information_schema.Tables WHERE table_name = 'Migrations';")
 	if err != nil {
 		return false, err
 	}
-	return len(rows) == 1, nil
+	var count int64
+	if err = rows[0].ColumnByName("cnt", &count); err != nil {
+		return false, err
+	}
+	return count == 1, nil
 }
