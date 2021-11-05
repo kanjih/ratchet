@@ -2,6 +2,7 @@ package handler
 
 import (
 	"cloud.google.com/go/spanner"
+	database "cloud.google.com/go/spanner/admin/database/apiv1"
 	"context"
 	"fmt"
 	"github.com/urfave/cli/v2"
@@ -40,6 +41,27 @@ func Init(c *cli.Context) error {
 
 	fmt.Println("Migration table has been created!!")
 	return nil
+}
+
+func ExecInit(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, targetDb string) error {
+	fmt.Println("Creating migration table...")
+
+	exists, err := isMigrationTableExists(ctx, dataClient)
+	if err != nil {
+		return err
+	}
+	if exists {
+		fmt.Println("Migration table already exists.")
+		return nil
+	}
+
+	if err = execDdl(ctx, adminClient, targetDb, migrationTableDdl); err != nil {
+		return err
+	}
+
+	fmt.Println("Migration table has been created!!")
+	return nil
+
 }
 
 func isMigrationTableExists(ctx context.Context, client *spanner.Client) (bool, error) {
