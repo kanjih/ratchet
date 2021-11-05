@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"io/ioutil"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -44,6 +45,28 @@ func Run(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	for _, migrationFilePath := range migrationFilePaths {
+		if err := runEachMigration(ctx, adminClient, dataClient, migrationFilePath, targetDb, executedMigrationIds); err != nil {
+			return err
+		}
+	}
+
+	fmt.Println("Migration completed!")
+	return nil
+}
+
+func ExecRun(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, targetDb string, migrationFilePaths []string) error {
+	fmt.Println("Migration started.")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
+	defer cancel()
+
+	executedMigrationIds, err := fetchExecutedMigrationIds(ctx, dataClient)
+	if err != nil {
+		return err
+	}
+
+	sort.Strings(migrationFilePaths)
 	for _, migrationFilePath := range migrationFilePaths {
 		if err := runEachMigration(ctx, adminClient, dataClient, migrationFilePath, targetDb, executedMigrationIds); err != nil {
 			return err
