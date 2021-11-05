@@ -12,5 +12,5 @@ func Init(ctx context.Context, adminClient *database.DatabaseAdminClient, dataCl
 }
 
 func Run(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, targetDb string, migrationFilePaths []string) error {
-	return handler.ExecInit(ctx, adminClient, dataClient, targetDb)
+	return handler.ExecRun(ctx, adminClient, dataClient, targetDb, migrationFilePaths)
 }
