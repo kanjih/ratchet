@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/urfave/cli/v2"
 	"os"
-	"ratchet/handler"
+	"github.com/kanjih/ratchet/handler"
 )
 
 func main() {
