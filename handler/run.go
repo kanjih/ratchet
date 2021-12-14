@@ -23,7 +23,7 @@ CREATE TABLE Migrations (
 	migrationInsertBaseQuery = "INSERT INTO `Migrations`(`id`, `executed_at`) VALUES ('%s', PENDING_COMMIT_TIMESTAMP())"
 )
 
-type Migrations struct {
+type Migration struct {
 	Id      string
 	Content []byte
 }

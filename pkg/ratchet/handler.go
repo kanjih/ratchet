@@ -17,9 +17,9 @@ func Init(ctx context.Context, adminClient *database.DatabaseAdminClient, dataCl
 }
 
 func Run(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, targetDb string, migrations []Migration) error {
-	var parsedMigrations []handler.Migrations
+	var parsedMigrations []handler.Migration
 	for _, m := range migrations {
-		parsedMigrations = append(parsedMigrations, handler.Migrations{Id: m.Id, Content: m.Content})
+		parsedMigrations = append(parsedMigrations, handler.Migration{Id: m.Id, Content: m.Content})
 	}
 	return handler.ExecRun(ctx, adminClient, dataClient, targetDb, parsedMigrations)
 }
