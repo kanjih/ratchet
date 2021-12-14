@@ -65,7 +65,7 @@ func Run(c *cli.Context) error {
 	return nil
 }
 
-func ExecRun(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, targetDb string, migrations []Migrations) error {
+func ExecRun(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, targetDb string, migrations []Migration) error {
 	fmt.Println("Migration started.")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
