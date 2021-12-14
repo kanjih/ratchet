@@ -23,6 +23,11 @@ CREATE TABLE Migrations (
 	migrationInsertBaseQuery = "INSERT INTO `Migrations`(`id`, `executed_at`) VALUES ('%s', PENDING_COMMIT_TIMESTAMP())"
 )
 
+type Migration struct {
+	Id      string
+	Content []byte
+}
+
 func Run(c *cli.Context) error {
 	fmt.Println("Migration started.")
 
@@ -46,7 +51,12 @@ func Run(c *cli.Context) error {
 		return err
 	}
 	for _, migrationFilePath := range migrationFilePaths {
-		if err := runEachMigration(ctx, adminClient, dataClient, migrationFilePath, targetDb, executedMigrationIds); err != nil {
+		migrationId := makeMigrationIdFromFilePath(migrationFilePath)
+		fileContent, err := ioutil.ReadFile(migrationFilePath)
+		if err != nil {
+			return err
+		}
+		if err := runEachMigration(ctx, adminClient, dataClient, migrationId, fileContent, targetDb, executedMigrationIds); err != nil {
 			return err
 		}
 	}
@@ -55,7 +65,31 @@ func Run(c *cli.Context) error {
 	return nil
 }
 
-func ExecRun(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, targetDb string, migrationFilePaths []string) error {
+func ExecRun(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, targetDb string, migrations []Migrations) error {
+	fmt.Println("Migration started.")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
+	defer cancel()
+
+	executedMigrationIds, err := fetchExecutedMigrationIds(ctx, dataClient)
+	if err != nil {
+		return err
+	}
+
+	sort.Slice(migrations, func(i, j int) bool {
+		return migrations[i].Id < migrations[j].Id
+	})
+	for _, m := range migrations {
+		if err := runEachMigration(ctx, adminClient, dataClient, m.Id, m.Content, targetDb, executedMigrationIds); err != nil {
+			return err
+		}
+	}
+
+	fmt.Println("Migration completed!")
+	return nil
+}
+
+func ExecRunWithFiles(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, targetDb string, migrationFilePaths []string) error {
 	fmt.Println("Migration started.")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
@@ -68,7 +102,12 @@ func ExecRun(ctx context.Context, adminClient *database.DatabaseAdminClient, dat
 
 	sort.Strings(migrationFilePaths)
 	for _, migrationFilePath := range migrationFilePaths {
-		if err := runEachMigration(ctx, adminClient, dataClient, migrationFilePath, targetDb, executedMigrationIds); err != nil {
+		migrationId := makeMigrationIdFromFilePath(migrationFilePath)
+		fileContent, err := ioutil.ReadFile(migrationFilePath)
+		if err != nil {
+			return err
+		}
+		if err := runEachMigration(ctx, adminClient, dataClient, migrationId, fileContent, targetDb, executedMigrationIds); err != nil {
 			return err
 		}
 	}
@@ -77,23 +116,18 @@ func ExecRun(ctx context.Context, adminClient *database.DatabaseAdminClient, dat
 	return nil
 }
 
-func runEachMigration(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, migrationFilePath, targetDb string, executedMigrationIds map[string]struct{}) error {
-	migrationId := makeMigrationIdFromFilePath(migrationFilePath)
+func runEachMigration(ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, migrationId string, fileContent []byte, targetDb string, executedMigrationIds map[string]struct{}) error {
 	if _, exists := executedMigrationIds[migrationId]; exists {
 		return nil
 	}
 	fmt.Print("running " + migrationId + " ... ")
 
-	fileContent, err := readFile(migrationFilePath)
-	if err != nil {
-		return err
-	}
-
-	for _, query := range parseToQueries(fileContent) {
+	var err error
+	for _, query := range parseToQueries(string(fileContent)) {
 		switch {
-		case strings.Contains(migrationFilePath, PartitionedDml):
+		case strings.Contains(migrationId, PartitionedDml):
 			err = execPartitionedDml(ctx, dataClient, query)
-		case strings.Contains(migrationFilePath, Dml):
+		case strings.Contains(migrationId, Dml):
 			err = execDml(ctx, dataClient, query)
 		default:
 			err = execDdl(ctx, adminClient, targetDb, query)
